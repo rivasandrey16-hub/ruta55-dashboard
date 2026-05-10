@@ -196,17 +196,32 @@
     @media(min-width:640px)  { .menu-grid { grid-template-columns: repeat(3,1fr); gap: 18px; } }
     .menu-card {
       background: var(--bg-card); border-radius: 14px; overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.055); cursor: pointer; position: relative;
       transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s, border-color 0.3s;
     }
-    .menu-card:hover { transform: translateY(-5px); border-color: rgba(201,34,42,0.35); box-shadow: 0 14px 40px rgba(0,0,0,0.55); }
-    .card-img { width: 100%; aspect-ratio: 1/1; background-size: cover; background-position: center; }
+    .menu-card:hover { transform: translateY(-6px); border-color: rgba(201,34,42,0.5); box-shadow: 0 18px 48px rgba(0,0,0,0.65); }
+    .card-img { width: 100%; aspect-ratio: 1/1; background-size: cover; background-position: center; position: relative; }
     .card-placeholder {
       width: 100%; aspect-ratio: 1/1;
       background: linear-gradient(135deg,#1c1510,#2e1c0e);
       display: flex; align-items: center; justify-content: center;
-      font-size: clamp(2rem,5vw,3rem);
+      font-size: clamp(2rem,5vw,3rem); position: relative;
     }
+    /* Peek overlay on hover */
+    .card-peek {
+      position: absolute; inset: 0; aspect-ratio: 1/1;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(15,13,11,0); transition: background 0.35s; z-index: 2; pointer-events: none;
+    }
+    .menu-card:hover .card-peek { background: rgba(15,13,11,0.58); }
+    .card-peek-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      letter-spacing: 3px; text-transform: uppercase; color: #fff;
+      background: rgba(201,34,42,0.92); padding: 6px 16px; border-radius: 20px;
+      opacity: 0; transform: translateY(6px); transition: all 0.3s;
+    }
+    .menu-card:hover .card-peek-label { opacity: 1; transform: translateY(0); }
+
     .card-body { padding: 14px 15px 18px; }
     .card-name { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
     .card-desc { font-size: 0.76rem; color: var(--text-soft); line-height: 1.45; }
@@ -278,6 +293,125 @@
     .sound-toggle:hover { transform: scale(1.12); border-color: rgba(201,34,42,0.7); }
     .sound-toggle.muted { border-color: rgba(255,255,255,0.1); opacity: 0.6; }
 
+    /* ── MODAL MENÚ ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 3000;
+      background: rgba(5,3,2,0.85); backdrop-filter: blur(10px);
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    @media(min-width:600px){ .modal-overlay{ align-items:center; } }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal-sheet {
+      width: 100%; max-width: 500px; background: #130f0d;
+      border-radius: 24px 24px 0 0; max-height: 93vh; overflow-y: auto;
+      transform: translateY(110%);
+      transition: transform 0.42s cubic-bezier(0.32,0.72,0,1);
+      scrollbar-width: none; position: relative;
+    }
+    .modal-sheet::-webkit-scrollbar { display: none; }
+    @media(min-width:600px){ .modal-sheet{ border-radius:24px; max-height:90vh; } }
+    .modal-overlay.open .modal-sheet { transform: translateY(0); }
+
+    /* Drag handle */
+    .modal-handle {
+      width: 40px; height: 4px; background: rgba(255,255,255,0.15);
+      border-radius: 2px; margin: 12px auto 0;
+    }
+    @media(min-width:600px){ .modal-handle{ display:none; } }
+
+    .modal-close {
+      position: absolute; top: 14px; right: 14px; z-index: 10;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.12); color: #fff;
+      font-size: 0.9rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.25s; line-height: 1;
+    }
+    .modal-close:hover { background: rgba(201,34,42,0.6); border-color: transparent; }
+
+    .modal-img-area {
+      width: 100%; height: 270px; position: relative; overflow: hidden;
+      background: #1a1210; border-radius: 0; flex-shrink: 0;
+    }
+    @media(min-width:600px){ .modal-img-area{ border-radius:24px 24px 0 0; } }
+    .modal-img-area img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .modal-emoji-bg {
+      width: 100%; height: 100%;
+      background: linear-gradient(135deg,#1c1510,#2a1508);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5.5rem;
+    }
+    .modal-img-grad {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 35%, #130f0d 100%);
+    }
+    .modal-img-info {
+      position: absolute; bottom: 0; left: 0; right: 0; padding: 18px 22px 14px;
+    }
+    .modal-badge {
+      display: inline-block; padding: 3px 11px; margin-bottom: 7px;
+      background: rgba(201,34,42,0.25); border: 1px solid rgba(201,34,42,0.5);
+      border-radius: 20px; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; color: var(--accent); letter-spacing: 2px; text-transform: uppercase;
+    }
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem; font-weight: 900; color: #fff; line-height: 1.1;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.9);
+    }
+
+    .modal-body { padding: 18px 22px 36px; }
+
+    .modal-price {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem; font-weight: 900; color: var(--accent);
+      margin-bottom: 4px; line-height: 1;
+    }
+    .modal-price-note {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.48rem;
+      color: var(--text-muted); letter-spacing: 2px; margin-left: 6px;
+      vertical-align: middle;
+    }
+    .modal-desc {
+      font-size: 0.88rem; color: var(--text-soft);
+      line-height: 1.65; margin: 12px 0 20px;
+    }
+    .modal-ing-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      color: var(--accent); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .modal-chips {
+      display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 28px;
+    }
+    .modal-chip {
+      padding: 5px 13px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
+      font-size: 0.76rem; color: var(--text-soft);
+    }
+    .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+    .modal-btn-cart {
+      width: 100%; padding: 15px; background: var(--accent); color: #fff;
+      border: none; border-radius: 50px; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 600;
+      letter-spacing: 0.5px; transition: all 0.3s;
+    }
+    .modal-btn-cart:hover { background: #e0242c; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(201,34,42,0.4); }
+    .modal-btn-cart.added { background: #1a7a3a; }
+    .modal-btn-wa {
+      display: block; width: 100%; padding: 14px; text-align: center;
+      background: transparent; color: var(--whatsapp);
+      border: 1px solid rgba(37,211,102,0.3); border-radius: 50px;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600;
+      text-decoration: none; transition: all 0.3s;
+    }
+    .modal-btn-wa:hover { background: rgba(37,211,102,0.1); border-color: rgba(37,211,102,0.6); }
+
     /* FLOATING WA */
     .wa-float {
       position: fixed; bottom: 22px; right: 22px; z-index: 999;
@@ -338,48 +472,54 @@
   <h2 class="section-title fade-in">Nuestro Men&uacute;</h2>
   <div class="divider fade-in"></div>
   <div class="menu-grid stagger">
-    <div class="menu-card fade-in">
+    <div class="menu-card fade-in" data-mid="0">
       <div class="card-img" style="background-image:url('assets/photos/p3_parrilla.png')"></div>
+      <div class="card-peek"><span class="card-peek-label">Ver detalle</span></div>
       <div class="card-body">
         <div class="card-name">Chorizo Santarosano</div>
         <div class="card-desc">Artesanal, a la parrilla con le&ntilde;a. El rey de la casa.</div>
         <span class="card-tag">Estrella</span>
       </div>
     </div>
-    <div class="menu-card fade-in">
+    <div class="menu-card fade-in" data-mid="1">
       <div class="card-img" style="background-image:url('assets/photos/p3_parrilla.png');filter:brightness(0.85) saturate(1.2)"></div>
+      <div class="card-peek"><span class="card-peek-label">Ver detalle</span></div>
       <div class="card-body">
         <div class="card-name">Picada Completa</div>
         <div class="card-desc">Chorizo, ternera, longaniza, arepa y guacamole para compartir.</div>
         <span class="card-tag">Para compartir</span>
       </div>
     </div>
-    <div class="menu-card fade-in">
+    <div class="menu-card fade-in" data-mid="2">
       <div class="card-placeholder">&#x1F37A;</div>
+      <div class="card-peek"><span class="card-peek-label">Ver detalle</span></div>
       <div class="card-body">
         <div class="card-name">Cerveza Poker</div>
-        <div class="card-desc">Bien fr&iacute;a, como debe ser. La compañera perfecta de toda buena picada.</div>
+        <div class="card-desc">Bien fr&iacute;a, como debe ser. La compa&ntilde;era perfecta de toda buena picada.</div>
         <span class="card-tag">Bar</span>
       </div>
     </div>
-    <div class="menu-card fade-in">
-      <div class="card-placeholder">&#x1F37A;</div>
+    <div class="menu-card fade-in" data-mid="3">
+      <div class="card-placeholder">&#x1F964;</div>
+      <div class="card-peek"><span class="card-peek-label">Ver detalle</span></div>
       <div class="card-body">
-        <div class="card-name">Bebidas Fr&iacute;as</div>
-        <div class="card-desc">Cervezas bien fr&iacute;as, gaseosas y jugos naturales.</div>
+        <div class="card-name">Gaseosas y Jugos</div>
+        <div class="card-desc">Jugos naturales de fruta y gaseosas bien fr&iacute;as.</div>
         <span class="card-tag">Bar</span>
       </div>
     </div>
-    <div class="menu-card fade-in">
-      <div class="card-placeholder">&#x2615;</div>
+    <div class="menu-card fade-in" data-mid="4">
+      <div class="card-placeholder">&#x1F356;</div>
+      <div class="card-peek"><span class="card-peek-label">Ver detalle</span></div>
       <div class="card-body">
-        <div class="card-name">Bebidas Calientes</div>
-        <div class="card-desc">Caf&eacute;, arom&aacute;ticas y chocolate para el fr&iacute;o de Chitag&aacute;.</div>
-        <span class="card-tag">Caliente</span>
+        <div class="card-name">Morcilla y Longaniza</div>
+        <div class="card-desc">Embutidos artesanales a la parrilla, el complemento ideal.</div>
+        <span class="card-tag">Parrilla</span>
       </div>
     </div>
-    <div class="menu-card fade-in">
+    <div class="menu-card fade-in" data-mid="5">
       <div class="card-placeholder">&#x1F951;</div>
+      <div class="card-peek"><span class="card-peek-label">Ver detalle</span></div>
       <div class="card-body">
         <div class="card-name">Acompa&ntilde;amientos</div>
         <div class="card-desc">Arepa, papas, guacamole, lim&oacute;n y aj&iacute; al gusto.</div>
@@ -475,6 +615,25 @@
   <span class="sound-on">🔥</span>
   <span class="sound-off" style="display:none">🔇</span>
 </button>
+
+<!-- Modal menú -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">&#x2715;</button>
+    <div class="modal-img-area" id="modal-img-area"></div>
+    <div class="modal-body">
+      <div class="modal-price" id="modal-price"></div>
+      <div class="modal-desc"  id="modal-desc"></div>
+      <div class="modal-ing-label">Ingredientes</div>
+      <div class="modal-chips" id="modal-chips"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-cart" id="modal-btn-cart" onclick="addToCart()">&#x1F6D2; Agregar al carrito</button>
+        <a class="modal-btn-wa" id="modal-btn-wa" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Pedir solo este</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
   var slogans = [
@@ -690,11 +849,141 @@
   document.addEventListener('click', initSound);
   document.addEventListener('touchstart', initSound);
 
-  // Conectar eventos a todos los elementos interactivos
+  // Conectar eventos de sonido a elementos interactivos
   document.querySelectorAll('button, a, .menu-card').forEach(function(el) {
     el.addEventListener('click',      function() { if (soundOn) playClick(); });
     el.addEventListener('mouseenter', function() { if (soundOn) playHover(); });
   });
+
+  // ── DATOS DEL MENÚ ────────────────────────────────────────────────
+  var MENU_DATA = [
+    { id:0, name:'Chorizo Santarosano', tag:'⭐ Estrella',
+      img:'assets/photos/p3_parrilla.png', imgFilter:'',
+      desc:'El rey de la casa. Chorizo artesanal santarosano directo a la parrilla con leña — crujiente por fuera, jugoso por dentro.',
+      ingredients:['Chorizo artesanal santarosano','Sal y especias de la región','Parrilla con leña de eucalipto'],
+      price:'$ ----' },
+    { id:1, name:'Picada Completa', tag:'🍽 Para compartir',
+      img:'assets/photos/p3_parrilla.png', imgFilter:'brightness(0.85) saturate(1.2)',
+      desc:'La combinación perfecta para el fin de semana. Ideal para 2-3 personas.',
+      ingredients:['Chorizo santarosano','Carne de ternera','Longaniza','Arepa de maíz','Guacamole casero','Papa criolla','Limón y ají'],
+      price:'$ ----' },
+    { id:2, name:'Cerveza Poker', tag:'🍺 Bar',
+      img:null, emoji:'🍺',
+      desc:'Bien helada, como tiene que ser. La compañera perfecta de toda buena picada en Llano Grande.',
+      ingredients:['Cerveza Poker 330ml','Servida en botella bien fría'],
+      price:'$ ----' },
+    { id:3, name:'Gaseosas y Jugos', tag:'🥤 Bar',
+      img:null, emoji:'🥤',
+      desc:'Refrescantes y naturales. Jugos de fruta de temporada y gaseosas para todos.',
+      ingredients:['Jugo natural de fruta','Gaseosa fría','Agua con gas o sin gas'],
+      price:'$ ----' },
+    { id:4, name:'Morcilla y Longaniza', tag:'🔥 Parrilla',
+      img:null, emoji:'🥩',
+      desc:'Embutidos artesanales a la parrilla. El complemento que no puede faltar en una buena picada.',
+      ingredients:['Morcilla artesanal','Longaniza ahumada','Parrilla con leña'],
+      price:'$ ----' },
+    { id:5, name:'Acompañamientos', tag:'🥑 Extras',
+      img:null, emoji:'🥑',
+      desc:'Los extras que hacen grande a la picada. Elige lo que quieras.',
+      ingredients:['Arepa de maíz','Papas criollas','Guacamole casero','Limón','Ají al gusto'],
+      price:'$ ----' }
+  ];
+
+  var currentItem = null;
+
+  function openModal(id) {
+    var item = MENU_DATA[id];
+    currentItem = item;
+
+    // Imagen o emoji
+    var imgArea = document.getElementById('modal-img-area');
+    if (item.img) {
+      imgArea.innerHTML =
+        '<img src="' + item.img + '" alt="' + item.name + '"' +
+        (item.imgFilter ? ' style="filter:' + item.imgFilter + '"' : '') + '>' +
+        '<div class="modal-img-grad"></div>' +
+        '<div class="modal-img-info">' +
+          '<span class="modal-badge">' + item.tag + '</span>' +
+          '<div class="modal-title">' + item.name + '</div>' +
+        '</div>';
+    } else {
+      imgArea.innerHTML =
+        '<div class="modal-emoji-bg">' + item.emoji + '</div>' +
+        '<div class="modal-img-grad"></div>' +
+        '<div class="modal-img-info">' +
+          '<span class="modal-badge">' + item.tag + '</span>' +
+          '<div class="modal-title">' + item.name + '</div>' +
+        '</div>';
+    }
+
+    // Precio
+    document.getElementById('modal-price').innerHTML =
+      item.price + '<span class="modal-price-note">precio por unidad</span>';
+
+    // Descripción
+    document.getElementById('modal-desc').textContent = item.desc;
+
+    // Ingredientes chips
+    document.getElementById('modal-chips').innerHTML =
+      item.ingredients.map(function(i){ return '<span class="modal-chip">' + i + '</span>'; }).join('');
+
+    // Botón carrito
+    var cartBtn = document.getElementById('modal-btn-cart');
+    cartBtn.textContent = '🛒 Agregar al carrito';
+    cartBtn.classList.remove('added');
+
+    // Link WA individual
+    var waMsg = encodeURIComponent('Hola Ruta 55! Quiero pedir: *' + item.name + '*');
+    document.getElementById('modal-btn-wa').href =
+      'https://wa.me/573133259805?text=' + waMsg;
+
+    // Abrir
+    document.getElementById('modal-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (soundOn) playClick();
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+    currentItem = null;
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  }
+
+  // Cerrar con ESC
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // Swipe hacia abajo para cerrar (móvil)
+  var touchStartY = 0;
+  var sheet = document.getElementById('modal-sheet');
+  sheet.addEventListener('touchstart', function(e) {
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  sheet.addEventListener('touchend', function(e) {
+    var dy = e.changedTouches[0].clientY - touchStartY;
+    if (dy > 80 && sheet.scrollTop === 0) closeModal();
+  }, { passive: true });
+
+  // Click en cards del menú
+  document.querySelectorAll('.menu-card[data-mid]').forEach(function(card) {
+    card.addEventListener('click', function() {
+      openModal(parseInt(this.dataset.mid));
+    });
+  });
+
+  // Placeholder carrito (Paso 3)
+  function addToCart() {
+    var btn = document.getElementById('modal-btn-cart');
+    btn.textContent = '✓ Agregado';
+    btn.classList.add('added');
+    if (soundOn) playClick();
+    // TODO Paso 3: lógica real del carrito
+  }
 </script>
 </body>
 </html>
