@@ -526,101 +526,161 @@ const html = `<!DOCTYPE html>
   }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
   document.querySelectorAll('.fade-in').forEach(function(el) { obs.observe(el); });
 
-  // ── SISTEMA DE SONIDO ─────────────────────────────────────────────
+  // ── SISTEMA DE SONIDO — Fogata quirúrgica ─────────────────────────
   var audioCtx = null;
-  var fireGain = null;
-  var fireSource = null;
+  var masterGain = null;
+  var popTimeout = null;
+  var lfoOsc = null;
+  var noiseSources = [];
   var soundOn = false;
 
-  function getAudioCtx() {
+  function getCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtx;
   }
 
-  // Fuego: ruido blanco filtrado → suena como leña crepitando
+  // Pink noise — mucho más natural que ruido blanco para fuego
+  function makePinkNoise(ctx, seconds) {
+    var sr = ctx.sampleRate;
+    var buf = ctx.createBuffer(2, sr * seconds, sr);
+    for (var ch = 0; ch < 2; ch++) {
+      var d = buf.getChannelData(ch);
+      var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (var i = 0; i < d.length; i++) {
+        var w = Math.random() * 2 - 1;
+        b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759;
+        b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856;
+        b4 = 0.55000*b4 + w*0.5329522; b5 =-0.7616 *b5 - w*0.0168980;
+        d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
+        b6 = w * 0.115926;
+      }
+    }
+    return buf;
+  }
+
+  // Crea una capa de ruido filtrada entre freq1 y freq2
+  function noiseLayer(ctx, dest, freq1, freq2, gain) {
+    var src = ctx.createBufferSource();
+    src.buffer = makePinkNoise(ctx, 5);
+    src.loop = true;
+
+    var hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=freq1; hp.Q.value=0.5;
+    var lp = ctx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=freq2; lp.Q.value=0.6;
+    var g  = ctx.createGain(); g.gain.value = gain;
+
+    src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(dest);
+    src.start();
+    noiseSources.push(src);
+    return src;
+  }
+
+  // Pop de madera: un chasquido orgánico aleatorio muy suave
+  function woodPop(ctx, dest) {
+    if (!soundOn) return;
+    try {
+      var g = ctx.createGain();
+      g.connect(dest);
+      // Cuerpo del pop: ruido muy corto
+      var bufPop = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.04), ctx.sampleRate);
+      var dp = bufPop.getChannelData(0);
+      for (var i=0; i<dp.length; i++) dp[i] = (Math.random()*2-1) * Math.exp(-i/(ctx.sampleRate*0.012));
+      var popSrc = ctx.createBufferSource(); popSrc.buffer = bufPop;
+      var lpPop = ctx.createBiquadFilter(); lpPop.type='lowpass'; lpPop.frequency.value = 280;
+      popSrc.connect(lpPop); lpPop.connect(g);
+      // Ganancia casi invisible
+      var vol = 0.04 + Math.random() * 0.04;
+      g.gain.setValueAtTime(vol, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.06);
+      popSrc.start();
+    } catch(e) {}
+    // Próximo pop: cada 3-9 segundos, completamente al azar → nunca se siente repetido
+    popTimeout = setTimeout(function(){ woodPop(ctx, dest); }, 3000 + Math.random()*6000);
+  }
+
   function startFire() {
-    var ctx = getAudioCtx();
-    var bufSize = ctx.sampleRate * 3;
-    var buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-    var d = buf.getChannelData(0);
-    for (var i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+    var ctx = getCtx();
 
-    fireSource = ctx.createBufferSource();
-    fireSource.buffer = buf;
-    fireSource.loop = true;
+    // Master gain: muy bajo — fogata lejana
+    masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 4); // 4s fade in suave
+    masterGain.connect(ctx.destination);
 
-    // Filtro pasabajos → solo graves del fuego
-    var lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 0.8;
+    // LFO respiración lenta (0.07 Hz = un ciclo cada ~14s) → fuego que "respira"
+    lfoOsc = ctx.createOscillator();
+    var lfoG = ctx.createGain();
+    lfoOsc.frequency.value = 0.07;
+    lfoG.gain.value = 0.018; // modula apenas ±1.8% el volumen
+    lfoOsc.connect(lfoG);
+    lfoG.connect(masterGain.gain);
+    lfoOsc.start();
 
-    // Filtro pasaaltos → elimina subgraves
-    var hp = ctx.createBiquadFilter();
-    hp.type = 'highpass'; hp.frequency.value = 60;
+    // Capas de frecuencia — como anillos de una fogata real:
+    noiseLayer(ctx, masterGain, 30,  100, 1.4);  // rumble profundo de brasas
+    noiseLayer(ctx, masterGain, 100, 350, 1.0);  // cuerpo principal del fuego
+    noiseLayer(ctx, masterGain, 350, 900, 0.35); // hiss suave del aire caliente
 
-    // Ganancia
-    fireGain = ctx.createGain();
-    fireGain.gain.setValueAtTime(0, ctx.currentTime);
-    fireGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 2); // fade in suave
-
-    fireSource.connect(hp);
-    hp.connect(lp);
-    lp.connect(fireGain);
-    fireGain.connect(ctx.destination);
-    fireSource.start();
+    // Pops de madera — comienzan después de 4s para no chocar con el fade-in
+    setTimeout(function(){ woodPop(ctx, masterGain); }, 4500);
   }
 
   function stopFire() {
-    if (fireGain) {
-      fireGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
-      var src = fireSource;
-      setTimeout(function() { try { src.stop(); } catch(e) {} }, 900);
+    clearTimeout(popTimeout);
+    if (masterGain && audioCtx) {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.2);
     }
+    setTimeout(function() {
+      noiseSources.forEach(function(s){ try{ s.stop(); }catch(e){} });
+      noiseSources = [];
+      if (lfoOsc) { try{ lfoOsc.stop(); }catch(e){} lfoOsc = null; }
+    }, 1400);
   }
 
-  // Sonido de clic — tono corto tipo "toc"
+  // Clic — golpe seco de madera, ni electrónico ni intenso
   function playClick() {
     try {
-      var ctx = getAudioCtx();
-      var osc = ctx.createOscillator();
-      var g = ctx.createGain();
-      osc.connect(g); g.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(900, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.08);
-      g.gain.setValueAtTime(0.25, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.13);
+      var ctx = getCtx();
+      var buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*0.06), ctx.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i=0; i<d.length; i++) d[i] = (Math.random()*2-1)*Math.exp(-i/(ctx.sampleRate*0.018));
+      var src = ctx.createBufferSource(); src.buffer = buf;
+      var lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=320;
+      var g = ctx.createGain(); g.gain.value = 0.22;
+      src.connect(lp); lp.connect(g); g.connect(ctx.destination);
+      src.start();
     } catch(e) {}
   }
 
-  // Sonido hover — chispa suave
+  // Hover — casi nada, una chispa imperceptible
   function playHover() {
     try {
-      var ctx = getAudioCtx();
+      var ctx = getCtx();
       var osc = ctx.createOscillator();
       var g = ctx.createGain();
+      osc.type = 'triangle'; osc.frequency.value = 1800 + Math.random()*400;
+      g.gain.setValueAtTime(0.022, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
       osc.connect(g); g.connect(ctx.destination);
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(1200, ctx.currentTime);
-      g.gain.setValueAtTime(0.06, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.08);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.045);
     } catch(e) {}
   }
 
-  // Toggle mute
+  // ── Toggle mute ───────────────────────────────────────────────────
   var soundBtn = document.getElementById('sound-toggle');
-  soundBtn.addEventListener('click', function() {
-    if (!soundOn) {
-      soundOn = true;
-      startFire();
-      soundBtn.querySelector('.sound-on').style.display = '';
-      soundBtn.querySelector('.sound-off').style.display = 'none';
-      soundBtn.classList.remove('muted');
-      playClick();
-    } else {
+
+  function enableSound() {
+    soundOn = true;
+    startFire();
+    soundBtn.querySelector('.sound-on').style.display = '';
+    soundBtn.querySelector('.sound-off').style.display = 'none';
+    soundBtn.classList.remove('muted');
+  }
+
+  soundBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!soundOn) { enableSound(); playClick(); }
+    else {
       soundOn = false;
       stopFire();
       soundBtn.querySelector('.sound-on').style.display = 'none';
@@ -629,24 +689,18 @@ const html = `<!DOCTYPE html>
     }
   });
 
-  // Arrancar sonido al primer toque/clic en la página
+  // Primer clic en la página → arranca solo
   function initSound() {
-    if (!soundOn) {
-      soundOn = true;
-      startFire();
-      soundBtn.querySelector('.sound-on').style.display = '';
-      soundBtn.querySelector('.sound-off').style.display = 'none';
-      soundBtn.classList.remove('muted');
-    }
+    if (!soundOn) enableSound();
     document.removeEventListener('click', initSound);
     document.removeEventListener('touchstart', initSound);
   }
   document.addEventListener('click', initSound);
   document.addEventListener('touchstart', initSound);
 
-  // Conectar sonido de clic a botones y cards
+  // Conectar eventos a todos los elementos interactivos
   document.querySelectorAll('button, a, .menu-card').forEach(function(el) {
-    el.addEventListener('click', function() { if (soundOn) playClick(); });
+    el.addEventListener('click',      function() { if (soundOn) playClick(); });
     el.addEventListener('mouseenter', function() { if (soundOn) playHover(); });
   });
 </script>
