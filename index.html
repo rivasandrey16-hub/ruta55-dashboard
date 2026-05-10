@@ -112,33 +112,21 @@
       position: relative; z-index: 2;
       text-align: center; padding: 0 24px;
     }
-    /* LOGO REFRESH BUTTON */
-    .logo-refresh-btn {
-      position: fixed; left: 16px; top: 50%;
-      transform: translateY(-50%);
-      z-index: 950;
-      background: rgba(10,8,6,0.75);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px;
-      padding: 6px;
-      cursor: pointer;
-      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s, border-color 0.3s;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-      width: 64px;
+    /* NAV LOGO BUTTON */
+    .nav-logo-btn {
+      background: none; border: none; padding: 0;
+      cursor: pointer; display: flex; align-items: center;
     }
-    .logo-refresh-btn img {
-      width: 52px; height: auto; display: block;
-      border-radius: 8px;
-      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    .nav-logo-btn img {
+      height: 38px; width: auto; display: block;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), filter 0.3s;
     }
-    .logo-refresh-btn:hover {
-      border-color: rgba(201,34,42,0.4);
-      box-shadow: 0 6px 28px rgba(0,0,0,0.7);
-      transform: translateY(calc(-50% - 3px));
+    .nav-logo-btn:hover img {
+      transform: scale(1.06);
+      filter: drop-shadow(0 4px 14px rgba(201,34,42,0.4));
     }
-    .logo-refresh-btn:hover img { transform: rotate(8deg) scale(1.05); }
-    .logo-refresh-btn:active img { transform: rotate(-10deg) scale(0.95); }
+    .nav-logo-btn:active img { transform: scale(0.95); }
     .hero-slogan {
       font-family: 'Playfair Display', serif; font-style: italic;
       font-size: clamp(1rem, 3vw, 1.35rem);
@@ -293,12 +281,10 @@
 </head>
 <body>
 
-<button class="logo-refresh-btn" onclick="location.reload()" aria-label="Recargar página" title="Inicio">
-  <img src="assets/photos/p1_logo.png" alt="Ruta 55">
-</button>
-
 <nav id="main-nav">
-  <a href="#inicio" class="nav-brand">RUTA 55</a>
+  <button class="nav-logo-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Inicio" title="Ir al inicio">
+    <img src="assets/photos/p1_logo.png" alt="Ruta 55">
+  </button>
   <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMenu()">
     <span></span><span></span><span></span>
   </button>
@@ -344,11 +330,11 @@
       </div>
     </div>
     <div class="menu-card fade-in">
-      <div class="card-placeholder">&#x1F969;</div>
+      <div class="card-placeholder">&#x2615;</div>
       <div class="card-body">
-        <div class="card-name">Asados al Punto</div>
-        <div class="card-desc">Carne a la parrilla con el sabor de Norte de Santander.</div>
-        <span class="card-tag">Parrilla</span>
+        <div class="card-name">Bebidas Calientes</div>
+        <div class="card-desc">Tinto, chocolate, aromáticas y café para arrancar el día o cerrar la tarde.</div>
+        <span class="card-tag">Bebidas</span>
       </div>
     </div>
     <div class="menu-card fade-in">
