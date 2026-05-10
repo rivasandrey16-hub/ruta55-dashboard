@@ -338,11 +338,11 @@ const html = `<!DOCTYPE html>
       </div>
     </div>
     <div class="menu-card fade-in">
-      <div class="card-placeholder">&#x2615;</div>
+      <div class="card-placeholder">&#x1F37A;</div>
       <div class="card-body">
-        <div class="card-name">Bebidas Calientes</div>
-        <div class="card-desc">Tinto, chocolate, aromáticas y café para arrancar el día o cerrar la tarde.</div>
-        <span class="card-tag">Bebidas</span>
+        <div class="card-name">Cerveza Poker</div>
+        <div class="card-desc">Bien fr&iacute;a, como debe ser. La compañera perfecta de toda buena picada.</div>
+        <span class="card-tag">Bar</span>
       </div>
     </div>
     <div class="menu-card fade-in">
