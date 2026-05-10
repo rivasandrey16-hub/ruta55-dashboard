@@ -419,6 +419,7 @@ const html = `<!DOCTYPE html>
       text-decoration: none; transition: all 0.3s;
     }
     .modal-btn-wa:hover { background: rgba(37,211,102,0.1); border-color: rgba(37,211,102,0.6); }
+    .modal-btn-wa svg { width: 18px; height: 18px; vertical-align: middle; margin-right: 6px; }
 
     /* FLOATING WA */
     .wa-float {
