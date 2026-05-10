@@ -1,0 +1,493 @@
+// Build script — photos served as external files, NOT base64
+const fs   = require('fs');
+const path = require('path');
+
+const WA_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
+
+const WA_LINK = 'https://wa.me/573133259805?text=Hola%20Ruta%2055%2C%20quiero%20hacer%20un%20pedido';
+
+const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruta 55 · Food &amp; Drinks · Chitag&aacute;</title>
+  <meta name="description" content="Chorizos Ruta 55 — Picadas, asados y bebidas en Llano Grande, Chitag&aacute;. Abiertos s&aacute;bados y domingos. Pide por WhatsApp.">
+  <meta name="theme-color" content="#0f0d0b">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0d0b;
+      --bg-card: #181512;
+      --bg-nav: rgba(10,8,6,0.96);
+      --accent: #c9222a;
+      --text: #f4f1ea;
+      --text-soft: #a89f92;
+      --text-muted: rgba(255,255,255,0.3);
+      --whatsapp: #25D366;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 900;
+      padding: 16px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      transition: background 0.3s;
+    }
+    nav.scrolled {
+      background: var(--bg-nav);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(201,34,42,0.15);
+    }
+    .nav-brand {
+      font-family: 'Playfair Display', serif;
+      font-weight: 900; font-size: 1.15rem;
+      letter-spacing: 3px; color: var(--text); text-decoration: none;
+    }
+    .hamburger {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px; cursor: pointer;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 5px; padding: 0;
+    }
+    .hamburger span {
+      display: block; width: 20px; height: 2px;
+      background: var(--text); border-radius: 2px; transition: all 0.3s;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .mobile-menu {
+      position: fixed; inset: 0; z-index: 800;
+      background: rgba(10,8,6,0.97);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 32px;
+      transform: translateX(100%);
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
+    .mobile-menu.open { transform: translateX(0); }
+    .mobile-menu a {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem; font-weight: 700;
+      color: var(--text); text-decoration: none;
+      letter-spacing: 2px; transition: color 0.2s;
+    }
+    .mobile-menu a:hover { color: var(--accent); }
+    .mobile-menu .menu-wa {
+      margin-top: 8px;
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--whatsapp); color: #fff;
+      padding: 14px 32px; border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 600; text-decoration: none;
+    }
+    .mobile-menu .menu-wa svg { width: 20px; height: 20px; }
+
+    /* HERO */
+    .hero {
+      position: relative; height: 100vh; min-height: 600px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: -20%; width: 140%; height: 140%;
+      background-image: url('assets/photos/p3_parrilla.png');
+      background-size: cover; background-position: center;
+      will-change: transform; z-index: 0;
+    }
+    .hero-overlay {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(15,13,11,0.55) 0%, rgba(15,13,11,0.2) 40%, rgba(15,13,11,0.92) 100%),
+        radial-gradient(ellipse at center, transparent 20%, rgba(15,13,11,0.55) 100%);
+      z-index: 1;
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      text-align: center; padding: 0 24px;
+    }
+    .hero-logo {
+      width: min(80vw, 480px); height: auto; margin-bottom: 16px;
+      filter: drop-shadow(0 8px 32px rgba(0,0,0,0.7));
+      animation: logoIn 1.2s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes logoIn {
+      from { opacity:0; transform:scale(0.88) translateY(24px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    .hero-slogan {
+      font-family: 'Playfair Display', serif; font-style: italic;
+      font-size: clamp(1rem, 3vw, 1.35rem);
+      color: rgba(244,241,234,0.85); margin-bottom: 10px; min-height: 1.8em;
+      animation: fadeUp 1s 0.3s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    .hero-tagline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem; letter-spacing: 3px;
+      color: var(--text-muted); text-transform: uppercase; margin-bottom: 36px;
+      animation: fadeUp 1s 0.45s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--whatsapp); color: #fff;
+      padding: 16px 36px; border-radius: 50px;
+      font-size: 1rem; font-weight: 600; text-decoration: none;
+      box-shadow: 0 4px 24px rgba(37,211,102,0.35); transition: all 0.3s;
+      animation: fadeUp 1s 0.6s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(37,211,102,0.5); }
+    .hero-cta svg { width: 22px; height: 22px; }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .hero-scroll {
+      position: absolute; bottom: 28px; left: 50%;
+      transform: translateX(-50%); z-index: 2;
+    }
+    .hero-scroll span {
+      display: block; width: 24px; height: 38px;
+      border: 2px solid var(--text-muted); border-radius: 12px;
+      position: relative; animation: bounce 2s infinite;
+    }
+    .hero-scroll span::after {
+      content: ''; position: absolute; top: 6px; left: 50%;
+      transform: translateX(-50%); width: 4px; height: 8px;
+      background: var(--accent); border-radius: 2px;
+      animation: scrollDot 2s infinite;
+    }
+    @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(7px);} }
+    @keyframes scrollDot { 0%{opacity:1;top:6px;} 100%{opacity:0;top:18px;} }
+
+    /* SECTIONS */
+    .section { padding: 72px 20px; max-width: 1080px; margin: 0 auto; }
+    .section-eyebrow {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      letter-spacing: 4px; color: var(--accent);
+      text-transform: uppercase; text-align: center; margin-bottom: 10px;
+    }
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem); font-weight: 900;
+      text-align: center; margin-bottom: 8px;
+    }
+    .divider { width: 44px; height: 3px; background: var(--accent); border-radius: 2px; margin: 0 auto 48px; }
+
+    /* MENU */
+    .menu-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+    @media(min-width:640px)  { .menu-grid { grid-template-columns: repeat(3,1fr); gap: 18px; } }
+    .menu-card {
+      background: var(--bg-card); border-radius: 14px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.055);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s, border-color 0.3s;
+    }
+    .menu-card:hover { transform: translateY(-5px); border-color: rgba(201,34,42,0.35); box-shadow: 0 14px 40px rgba(0,0,0,0.55); }
+    .card-img { width: 100%; aspect-ratio: 1/1; background-size: cover; background-position: center; }
+    .card-placeholder {
+      width: 100%; aspect-ratio: 1/1;
+      background: linear-gradient(135deg,#1c1510,#2e1c0e);
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(2rem,5vw,3rem);
+    }
+    .card-body { padding: 14px 15px 18px; }
+    .card-name { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .card-desc { font-size: 0.76rem; color: var(--text-soft); line-height: 1.45; }
+    .card-tag {
+      display: inline-block; margin-top: 9px; padding: 3px 10px;
+      background: rgba(201,34,42,0.1); border: 1px solid rgba(201,34,42,0.28);
+      border-radius: 20px; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.52rem; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase;
+    }
+
+    /* INFO STRIP */
+    .info-strip {
+      background: linear-gradient(135deg,#1a1410,#251a10);
+      border: 1px solid rgba(201,34,42,0.18); border-radius: 16px;
+      padding: 36px 28px;
+      display: grid; grid-template-columns: 1fr; gap: 28px;
+      text-align: center; margin: 0 20px;
+    }
+    @media(min-width:640px) { .info-strip { grid-template-columns: repeat(3,1fr); text-align:left; margin: 0 auto; max-width: 1080px; } }
+    .info-label { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
+    .info-value { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .info-sub { font-size: 0.78rem; color: var(--text-soft); }
+    .info-link { color: var(--accent); text-decoration: none; font-size: 0.78rem; }
+    .info-link:hover { text-decoration: underline; }
+
+    /* ABOUT */
+    .about-text { font-size: 1.05rem; line-height: 1.75; color: var(--text-soft); max-width: 680px; margin: 0 auto; text-align: center; }
+
+    /* REVIEWS */
+    .reviews-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media(min-width:640px) { .reviews-grid { grid-template-columns: repeat(2,1fr); } }
+    @media(min-width:900px) { .reviews-grid { grid-template-columns: repeat(3,1fr); } }
+    .review-card { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.055); border-radius: 12px; padding: 20px 18px; }
+    .review-stars { font-size: 1rem; margin-bottom: 10px; letter-spacing: 2px; }
+    .review-text { font-size: 0.88rem; color: var(--text-soft); line-height: 1.5; font-style: italic; margin-bottom: 14px; }
+    .review-author { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--text-muted); letter-spacing: 1.5px; }
+
+    /* CTA */
+    .cta-section { text-align: center; padding: 80px 20px; background: radial-gradient(ellipse at center, rgba(201,34,42,0.07) 0%, transparent 70%); }
+    .cta-big {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: var(--whatsapp); color: #fff;
+      padding: 20px 48px; border-radius: 60px;
+      font-family: 'Playfair Display', serif; font-size: 1.25rem; font-weight: 700;
+      text-decoration: none; box-shadow: 0 6px 32px rgba(37,211,102,0.3); transition: all 0.3s;
+    }
+    .cta-big:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 40px rgba(37,211,102,0.45); }
+    .cta-big svg { width: 26px; height: 26px; }
+    .cta-note { margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--text-muted); letter-spacing: 2px; }
+
+    /* FOOTER */
+    footer { text-align: center; padding: 40px 20px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .footer-brand { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 900; letter-spacing: 3px; margin-bottom: 6px; }
+    .footer-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 4px; }
+    .footer-seldren { margin-top: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.48rem; color: rgba(255,255,255,0.08); letter-spacing: 2px; }
+
+    /* FLOATING WA */
+    .wa-float {
+      position: fixed; bottom: 22px; right: 22px; z-index: 999;
+      width: 58px; height: 58px; background: var(--whatsapp); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(37,211,102,0.4); transition: all 0.3s; text-decoration: none;
+    }
+    .wa-float:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(37,211,102,0.55); }
+    .wa-float svg { width: 30px; height: 30px; color: #fff; }
+
+    /* FADE IN */
+    .fade-in { opacity:0; transform:translateY(28px); transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1); }
+    .fade-in.visible { opacity:1; transform:translateY(0); }
+    .stagger>.fade-in:nth-child(2){transition-delay:80ms}
+    .stagger>.fade-in:nth-child(3){transition-delay:160ms}
+    .stagger>.fade-in:nth-child(4){transition-delay:240ms}
+    .stagger>.fade-in:nth-child(5){transition-delay:320ms}
+    .stagger>.fade-in:nth-child(6){transition-delay:400ms}
+
+    ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:rgba(201,34,42,0.3);border-radius:2px}
+  </style>
+</head>
+<body>
+
+<nav id="main-nav">
+  <a href="#inicio" class="nav-brand">RUTA 55</a>
+  <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#menu" onclick="toggleMenu()">Men&uacute;</a>
+  <a href="#nosotros" onclick="toggleMenu()">Nosotros</a>
+  <a href="#resenas" onclick="toggleMenu()">Rese&ntilde;as</a>
+  <a href="${WA_LINK}" class="menu-wa" target="_blank" rel="noopener" onclick="toggleMenu()">${WA_SVG} Pedir Ahora</a>
+</div>
+
+<section class="hero" id="inicio">
+  <div class="hero-bg" id="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <img src="assets/photos/p1_logo.png" alt="Chorizos Ruta 55" class="hero-logo">
+    <p class="hero-slogan" id="hero-slogan"></p>
+    <p class="hero-tagline">Llano Grande &middot; Chitag&aacute; &middot; Norte de Santander</p>
+    <a href="${WA_LINK}" class="hero-cta" target="_blank" rel="noopener">${WA_SVG} Pedir por WhatsApp</a>
+  </div>
+  <div class="hero-scroll"><span></span></div>
+</section>
+
+<section class="section" id="menu">
+  <p class="section-eyebrow fade-in">Lo que hacemos</p>
+  <h2 class="section-title fade-in">Nuestro Men&uacute;</h2>
+  <div class="divider fade-in"></div>
+  <div class="menu-grid stagger">
+    <div class="menu-card fade-in">
+      <div class="card-img" style="background-image:url('assets/photos/p3_parrilla.png')"></div>
+      <div class="card-body">
+        <div class="card-name">Chorizo Santarosano</div>
+        <div class="card-desc">Artesanal, a la parrilla con le&ntilde;a. El rey de la casa.</div>
+        <span class="card-tag">Estrella</span>
+      </div>
+    </div>
+    <div class="menu-card fade-in">
+      <div class="card-img" style="background-image:url('assets/photos/p3_parrilla.png');filter:brightness(0.85) saturate(1.2)"></div>
+      <div class="card-body">
+        <div class="card-name">Picada Completa</div>
+        <div class="card-desc">Chorizo, ternera, longaniza, arepa y guacamole para compartir.</div>
+        <span class="card-tag">Para compartir</span>
+      </div>
+    </div>
+    <div class="menu-card fade-in">
+      <div class="card-placeholder">&#x1F969;</div>
+      <div class="card-body">
+        <div class="card-name">Asados al Punto</div>
+        <div class="card-desc">Carne a la parrilla con el sabor de Norte de Santander.</div>
+        <span class="card-tag">Parrilla</span>
+      </div>
+    </div>
+    <div class="menu-card fade-in">
+      <div class="card-placeholder">&#x1F37A;</div>
+      <div class="card-body">
+        <div class="card-name">Bebidas Fr&iacute;as</div>
+        <div class="card-desc">Cervezas bien fr&iacute;as, gaseosas y jugos naturales.</div>
+        <span class="card-tag">Bar</span>
+      </div>
+    </div>
+    <div class="menu-card fade-in">
+      <div class="card-placeholder">&#x2615;</div>
+      <div class="card-body">
+        <div class="card-name">Bebidas Calientes</div>
+        <div class="card-desc">Caf&eacute;, arom&aacute;ticas y chocolate para el fr&iacute;o de Chitag&aacute;.</div>
+        <span class="card-tag">Caliente</span>
+      </div>
+    </div>
+    <div class="menu-card fade-in">
+      <div class="card-placeholder">&#x1F951;</div>
+      <div class="card-body">
+        <div class="card-name">Acompa&ntilde;amientos</div>
+        <div class="card-desc">Arepa, papas, guacamole, lim&oacute;n y aj&iacute; al gusto.</div>
+        <span class="card-tag">Extras</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="info-strip fade-in">
+  <div>
+    <div class="info-label">Horario</div>
+    <div class="info-value">S&aacute;bados y Domingos</div>
+    <div class="info-sub">Los fines de semana, siempre abiertos</div>
+  </div>
+  <div>
+    <div class="info-label">Ubicaci&oacute;n</div>
+    <div class="info-value">Llano Grande</div>
+    <div class="info-sub">Chitag&aacute;, Norte de Santander<br>
+      <a href="https://maps.google.com/?q=Llano+Grande,+Chitag%C3%A1,+Norte+de+Santander,+Colombia" target="_blank" rel="noopener" class="info-link">&#x1F4CD; Ver en Google Maps</a>
+    </div>
+  </div>
+  <div>
+    <div class="info-label">Pedidos</div>
+    <div class="info-value">WhatsApp</div>
+    <div class="info-sub"><a href="${WA_LINK}" target="_blank" rel="noopener" class="info-link">+57 313 325 9805</a></div>
+  </div>
+</div>
+
+<section class="section" id="nosotros" style="text-align:center;max-width:740px;">
+  <p class="section-eyebrow fade-in">Qui&eacute;nes somos</p>
+  <h2 class="section-title fade-in">Tradici&oacute;n Nortesantandereana</h2>
+  <div class="divider fade-in"></div>
+  <p class="about-text fade-in">Desde Llano Grande, en el coraz&oacute;n de Chitag&aacute;, traemos a tu mesa el mejor chorizo santarosano y las picadas m&aacute;s completas de la regi&oacute;n. Sabor artesanal, parrilla con le&ntilde;a y el ambiente que solo Ruta 55 puede ofrecer. Un lugar para compartir, tomar algo fr&iacute;o y disfrutar el fin de semana.</p>
+</section>
+
+<section class="section" id="resenas">
+  <p class="section-eyebrow fade-in">Lo que dicen</p>
+  <h2 class="section-title fade-in">Rese&ntilde;as</h2>
+  <div class="divider fade-in"></div>
+  <div class="reviews-grid stagger">
+    <div class="review-card fade-in">
+      <div class="review-stars">&#x2B50;&#x2B50;&#x2B50;&#x2B50;</div>
+      <p class="review-text">"Buen sitio para tomar y pasar un buen rato con amigos. La atenci&oacute;n es tranquila y el ambiente est&aacute; bien. Volvemos el pr&oacute;ximo fin de semana."</p>
+      <div class="review-author">CARLOS M. &mdash; CHITAG&Aacute;</div>
+    </div>
+    <div class="review-card fade-in">
+      <div class="review-stars">&#x2B50;&#x2B50;&#x2B50;&#x2B50;&#x2B50;</div>
+      <p class="review-text">"Me gusta la combinaci&oacute;n de la carne de ternera con el chorizo santarosano. Se complementan muy bien. Las porciones son generosas."</p>
+      <div class="review-author">DIANA P. &mdash; PAMPLONA</div>
+    </div>
+    <div class="review-card fade-in">
+      <div class="review-stars">&#x2B50;&#x2B50;&#x2B50;&#x2B50;</div>
+      <p class="review-text">"Las arepas son buenas, bien hechas. El chorizo a&uacute;n mejor. Lugar tranquilo para el fin de semana sin tanto ruido."</p>
+      <div class="review-author">PEDRO A. &mdash; LLANO GRANDE</div>
+    </div>
+    <div class="review-card fade-in">
+      <div class="review-stars">&#x2B50;&#x2B50;&#x2B50;</div>
+      <p class="review-text">"La picada estaba rica aunque el servicio tard&oacute; un poco. Pero el sabor del chorizo lo compensa. Vale la pena ir."</p>
+      <div class="review-author">JULIANA R. &mdash; CHITAG&Aacute;</div>
+    </div>
+    <div class="review-card fade-in">
+      <div class="review-stars">&#x2B50;&#x2B50;&#x2B50;&#x2B50;</div>
+      <p class="review-text">"La cerveza bien fr&iacute;a y el chorizo en su punto. &iquest;Qu&eacute; m&aacute;s se le puede pedir a un s&aacute;bado? Un cl&aacute;sico del pueblo."</p>
+      <div class="review-author">ANDRES V. &mdash; NORTE DE SANTANDER</div>
+    </div>
+    <div class="review-card fade-in">
+      <div class="review-stars">&#x2B50;&#x2B50;&#x2B50;&#x2B50;</div>
+      <p class="review-text">"Fui con familia un domingo y todos quedamos contentos. Los ni&ntilde;os con jugos, los adultos con cervezas y la picada alcanz&oacute; para todos."</p>
+      <div class="review-author">ROSA C. &mdash; CHITAG&Aacute;</div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section fade-in">
+  <p class="section-eyebrow" style="margin-bottom:14px;">Este fin de semana</p>
+  <h2 class="section-title" style="margin-bottom:28px;">&iquest;Se te antoj&oacute;?</h2>
+  <a href="${WA_LINK}" class="cta-big" target="_blank" rel="noopener">${WA_SVG} Pedir por WhatsApp</a>
+  <p class="cta-note">S&aacute;bados y Domingos &middot; Llano Grande, Chitag&aacute;</p>
+</section>
+
+<footer>
+  <div class="footer-brand">RUTA 55</div>
+  <div class="footer-sub">FOOD &amp; DRINKS &middot; CHITAG&Aacute;</div>
+  <div class="footer-sub" style="margin-top:4px;">S&aacute;bados y Domingos &middot; Llano Grande</div>
+  <div class="footer-seldren">Dise&ntilde;ado por SELDREN</div>
+</footer>
+
+<a href="${WA_LINK}" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp">${WA_SVG}</a>
+
+<script>
+  var slogans = [
+    "El sabor que no olvidas.",
+    "Parrilla de verdad, sabor de siempre.",
+    "Donde el chorizo manda.",
+    "Los fines de semana saben mejor aquí.",
+    "De la parrilla a tu mesa.",
+    "El punto exacto de la tradición.",
+    "Fuego, sabor y buen ambiente.",
+    "Chitagá sabe a Ruta 55."
+  ];
+  document.getElementById('hero-slogan').textContent =
+    '\\u201c' + slogans[Math.floor(Math.random() * slogans.length)] + '\\u201d';
+
+  var nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', function() {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  }, { passive: true });
+
+  var heroBg = document.getElementById('hero-bg');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY < window.innerHeight)
+      heroBg.style.transform = 'translateY(' + (window.scrollY * 0.32) + 'px)';
+  }, { passive: true });
+
+  function toggleMenu() {
+    var m = document.getElementById('mobile-menu');
+    var b = document.getElementById('hamburger');
+    var o = m.classList.toggle('open');
+    b.classList.toggle('open', o);
+    document.body.style.overflow = o ? 'hidden' : '';
+  }
+
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.fade-in').forEach(function(el) { obs.observe(el); });
+</script>
+</body>
+</html>`;
+
+const out = path.join(__dirname, '..');
+fs.writeFileSync(path.join(out, 'index.html'), html);
+const size = Math.round(fs.statSync(path.join(out, 'index.html')).size / 1024);
+console.log('index.html: ' + size + ' KB — listo!');
