@@ -118,13 +118,15 @@ const html = `<!DOCTYPE html>
       align-items: center; justify-content: center; overflow: hidden;
     }
     .hero-overlay {
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse at center, transparent 30%, rgba(15,13,11,0.5) 100%);
-      z-index: 1;
+      position: absolute; inset: 0; z-index: 1;
+      background:
+        linear-gradient(to bottom, rgba(10,8,6,0.45) 0%, rgba(10,8,6,0.1) 40%, rgba(10,8,6,0.72) 100%),
+        radial-gradient(ellipse at center, transparent 25%, rgba(10,8,6,0.55) 100%);
     }
     .hero-content {
-      position: relative; z-index: 2;
+      position: relative; z-index: 10;
       text-align: center; padding: 0 24px;
+      display: flex; flex-direction: column; align-items: center;
     }
     /* NAV LOGO BUTTON */
     .nav-logo-btn {
@@ -143,28 +145,30 @@ const html = `<!DOCTYPE html>
     .nav-logo-btn:active img { transform: scale(0.95); }
     .hero-slogan {
       font-family: 'Playfair Display', serif; font-style: italic;
-      font-size: clamp(1rem, 3vw, 1.35rem);
-      color: rgba(244,241,234,0.85); margin-bottom: 10px; min-height: 1.8em;
-      animation: fadeUp 1s 0.3s cubic-bezier(0.16,1,0.3,1) both;
+      font-size: clamp(1.1rem, 3.5vw, 1.6rem);
+      color: #fff; margin-bottom: 12px; min-height: 1.8em;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.7);
+      opacity: 0; animation: fadeUp 0.9s 0.2s ease forwards;
     }
     .hero-tagline {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.65rem; letter-spacing: 3px;
-      color: var(--text-muted); text-transform: uppercase; margin-bottom: 36px;
-      animation: fadeUp 1s 0.45s cubic-bezier(0.16,1,0.3,1) both;
+      font-size: 0.62rem; letter-spacing: 4px;
+      color: rgba(255,255,255,0.65); text-transform: uppercase; margin-bottom: 40px;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+      opacity: 0; animation: fadeUp 0.9s 0.45s ease forwards;
     }
     .hero-cta {
       display: inline-flex; align-items: center; gap: 10px;
       background: var(--whatsapp); color: #fff;
       padding: 16px 36px; border-radius: 50px;
       font-size: 1rem; font-weight: 600; text-decoration: none;
-      box-shadow: 0 4px 24px rgba(37,211,102,0.35); transition: all 0.3s;
-      animation: fadeUp 1s 0.6s cubic-bezier(0.16,1,0.3,1) both;
+      box-shadow: 0 4px 24px rgba(37,211,102,0.45); transition: all 0.3s;
+      opacity: 0; animation: fadeUp 0.9s 0.7s ease forwards;
     }
     .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(37,211,102,0.5); }
     .hero-cta svg { width: 22px; height: 22px; }
     @keyframes fadeUp {
-      from { opacity:0; transform:translateY(20px); }
+      from { opacity:0; transform:translateY(18px); }
       to   { opacity:1; transform:translateY(0); }
     }
     .hero-scroll {
