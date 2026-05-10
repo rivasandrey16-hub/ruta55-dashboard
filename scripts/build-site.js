@@ -120,15 +120,33 @@ const html = `<!DOCTYPE html>
       position: relative; z-index: 2;
       text-align: center; padding: 0 24px;
     }
-    .hero-logo {
-      width: min(80vw, 480px); height: auto; margin-bottom: 16px;
-      filter: drop-shadow(0 8px 32px rgba(0,0,0,0.7));
-      animation: logoIn 1.2s cubic-bezier(0.16,1,0.3,1) both;
+    /* LOGO REFRESH BUTTON */
+    .logo-refresh-btn {
+      position: fixed; left: 16px; top: 50%;
+      transform: translateY(-50%);
+      z-index: 950;
+      background: rgba(10,8,6,0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 6px;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s, border-color 0.3s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      width: 64px;
     }
-    @keyframes logoIn {
-      from { opacity:0; transform:scale(0.88) translateY(24px); }
-      to   { opacity:1; transform:scale(1) translateY(0); }
+    .logo-refresh-btn img {
+      width: 52px; height: auto; display: block;
+      border-radius: 8px;
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
     }
+    .logo-refresh-btn:hover {
+      border-color: rgba(201,34,42,0.4);
+      box-shadow: 0 6px 28px rgba(0,0,0,0.7);
+      transform: translateY(calc(-50% - 3px));
+    }
+    .logo-refresh-btn:hover img { transform: rotate(8deg) scale(1.05); }
+    .logo-refresh-btn:active img { transform: rotate(-10deg) scale(0.95); }
     .hero-slogan {
       font-family: 'Playfair Display', serif; font-style: italic;
       font-size: clamp(1rem, 3vw, 1.35rem);
@@ -283,6 +301,10 @@ const html = `<!DOCTYPE html>
 </head>
 <body>
 
+<button class="logo-refresh-btn" onclick="location.reload()" aria-label="Recargar página" title="Inicio">
+  <img src="assets/photos/p1_logo.png" alt="Ruta 55">
+</button>
+
 <nav id="main-nav">
   <a href="#inicio" class="nav-brand">RUTA 55</a>
   <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMenu()">
@@ -301,7 +323,6 @@ const html = `<!DOCTYPE html>
   <div class="hero-bg" id="hero-bg"></div>
   <div class="hero-overlay"></div>
   <div class="hero-content">
-    <img src="assets/photos/p1_logo.png" alt="Chorizos Ruta 55" class="hero-logo">
     <p class="hero-slogan" id="hero-slogan"></p>
     <p class="hero-tagline">Llano Grande &middot; Chitag&aacute; &middot; Norte de Santander</p>
     <a href="${WA_LINK}" class="hero-cta" target="_blank" rel="noopener">${WA_SVG} Pedir por WhatsApp</a>
