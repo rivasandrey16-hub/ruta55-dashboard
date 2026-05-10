@@ -271,6 +271,21 @@ const html = `<!DOCTYPE html>
     .footer-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 4px; }
     .footer-seldren { margin-top: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.48rem; color: rgba(255,255,255,0.08); letter-spacing: 2px; }
 
+    /* SOUND TOGGLE */
+    .sound-toggle {
+      position: fixed; bottom: 92px; right: 22px; z-index: 999;
+      width: 48px; height: 48px;
+      background: rgba(15,13,11,0.82);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(201,34,42,0.35);
+      border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; transition: all 0.3s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .sound-toggle:hover { transform: scale(1.12); border-color: rgba(201,34,42,0.7); }
+    .sound-toggle.muted { border-color: rgba(255,255,255,0.1); opacity: 0.6; }
+
     /* FLOATING WA */
     .wa-float {
       position: fixed; bottom: 22px; right: 22px; z-index: 999;
@@ -463,6 +478,12 @@ const html = `<!DOCTYPE html>
 
 <a href="${WA_LINK}" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp">${WA_SVG}</a>
 
+<!-- Botón mute flotante -->
+<button class="sound-toggle" id="sound-toggle" aria-label="Sonido" title="Activar/Desactivar sonido">
+  <span class="sound-on">🔥</span>
+  <span class="sound-off" style="display:none">🔇</span>
+</button>
+
 <script>
   var slogans = [
     "El sabor que no olvidas.",
@@ -504,6 +525,130 @@ const html = `<!DOCTYPE html>
     entries.forEach(function(e) { if (e.isIntersecting) e.target.classList.add('visible'); });
   }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
   document.querySelectorAll('.fade-in').forEach(function(el) { obs.observe(el); });
+
+  // ── SISTEMA DE SONIDO ─────────────────────────────────────────────
+  var audioCtx = null;
+  var fireGain = null;
+  var fireSource = null;
+  var soundOn = false;
+
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  // Fuego: ruido blanco filtrado → suena como leña crepitando
+  function startFire() {
+    var ctx = getAudioCtx();
+    var bufSize = ctx.sampleRate * 3;
+    var buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+
+    fireSource = ctx.createBufferSource();
+    fireSource.buffer = buf;
+    fireSource.loop = true;
+
+    // Filtro pasabajos → solo graves del fuego
+    var lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 0.8;
+
+    // Filtro pasaaltos → elimina subgraves
+    var hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 60;
+
+    // Ganancia
+    fireGain = ctx.createGain();
+    fireGain.gain.setValueAtTime(0, ctx.currentTime);
+    fireGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 2); // fade in suave
+
+    fireSource.connect(hp);
+    hp.connect(lp);
+    lp.connect(fireGain);
+    fireGain.connect(ctx.destination);
+    fireSource.start();
+  }
+
+  function stopFire() {
+    if (fireGain) {
+      fireGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
+      var src = fireSource;
+      setTimeout(function() { try { src.stop(); } catch(e) {} }, 900);
+    }
+  }
+
+  // Sonido de clic — tono corto tipo "toc"
+  function playClick() {
+    try {
+      var ctx = getAudioCtx();
+      var osc = ctx.createOscillator();
+      var g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.08);
+      g.gain.setValueAtTime(0.25, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.13);
+    } catch(e) {}
+  }
+
+  // Sonido hover — chispa suave
+  function playHover() {
+    try {
+      var ctx = getAudioCtx();
+      var osc = ctx.createOscillator();
+      var g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1200, ctx.currentTime);
+      g.gain.setValueAtTime(0.06, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.08);
+    } catch(e) {}
+  }
+
+  // Toggle mute
+  var soundBtn = document.getElementById('sound-toggle');
+  soundBtn.addEventListener('click', function() {
+    if (!soundOn) {
+      soundOn = true;
+      startFire();
+      soundBtn.querySelector('.sound-on').style.display = '';
+      soundBtn.querySelector('.sound-off').style.display = 'none';
+      soundBtn.classList.remove('muted');
+      playClick();
+    } else {
+      soundOn = false;
+      stopFire();
+      soundBtn.querySelector('.sound-on').style.display = 'none';
+      soundBtn.querySelector('.sound-off').style.display = '';
+      soundBtn.classList.add('muted');
+    }
+  });
+
+  // Arrancar sonido al primer toque/clic en la página
+  function initSound() {
+    if (!soundOn) {
+      soundOn = true;
+      startFire();
+      soundBtn.querySelector('.sound-on').style.display = '';
+      soundBtn.querySelector('.sound-off').style.display = 'none';
+      soundBtn.classList.remove('muted');
+    }
+    document.removeEventListener('click', initSound);
+    document.removeEventListener('touchstart', initSound);
+  }
+  document.addEventListener('click', initSound);
+  document.addEventListener('touchstart', initSound);
+
+  // Conectar sonido de clic a botones y cards
+  document.querySelectorAll('button, a, .menu-card').forEach(function(el) {
+    el.addEventListener('click', function() { if (soundOn) playClick(); });
+    el.addEventListener('mouseenter', function() { if (soundOn) playHover(); });
+  });
 </script>
 </body>
 </html>`;
