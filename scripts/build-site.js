@@ -663,15 +663,13 @@ const html = `<!DOCTYPE html>
     nav.classList.toggle('scrolled', window.scrollY > 40);
   }, { passive: true });
 
-  // Scroll-driven video: avanza el video según la posición de scroll
+  // Video de fondo: autoplay suave con leve parallax CSS al hacer scroll
   var bgVideo = document.getElementById('bg-video');
-  bgVideo.addEventListener('loadedmetadata', function() {
-    window.addEventListener('scroll', function() {
-      var maxScroll = document.body.scrollHeight - window.innerHeight;
-      var progress  = Math.min(window.scrollY / maxScroll, 1);
-      bgVideo.currentTime = progress * bgVideo.duration;
-    }, { passive: true });
-  });
+  bgVideo.play().catch(function(){});
+  window.addEventListener('scroll', function() {
+    var offset = window.scrollY * 0.15;
+    bgVideo.style.transform = 'translateY(' + offset + 'px) scale(1.12)';
+  }, { passive: true });
 
   function toggleMenu() {
     var m = document.getElementById('mobile-menu');
@@ -686,144 +684,162 @@ const html = `<!DOCTYPE html>
   }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
   document.querySelectorAll('.fade-in').forEach(function(el) { obs.observe(el); });
 
-  // ── SISTEMA DE SONIDO — Fogata quirúrgica ─────────────────────────
-  var audioCtx = null;
-  var masterGain = null;
-  var popTimeout = null;
-  var lfoOsc = null;
-  var noiseSources = [];
-  var soundOn = false;
+  // ── SONIDO: FOGATA DE MADERA ─────────────────────────────────────
+  var audioCtx = null, masterGain = null, crackTimer = null;
+  var noiseSrcs = [], lfoNode = null, soundOn = false;
 
   function getCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtx;
   }
 
-  // Pink noise — mucho más natural que ruido blanco para fuego
-  function makePinkNoise(ctx, seconds) {
-    var sr = ctx.sampleRate;
-    var buf = ctx.createBuffer(2, sr * seconds, sr);
-    for (var ch = 0; ch < 2; ch++) {
-      var d = buf.getChannelData(ch);
-      var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-      for (var i = 0; i < d.length; i++) {
-        var w = Math.random() * 2 - 1;
-        b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759;
-        b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856;
-        b4 = 0.55000*b4 + w*0.5329522; b5 =-0.7616 *b5 - w*0.0168980;
-        d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
-        b6 = w * 0.115926;
-      }
+  // Pink noise buffer (más orgánico que ruido blanco)
+  function pinkBuf(ctx, secs) {
+    var sr = ctx.sampleRate, len = sr * secs;
+    var buf = ctx.createBuffer(1, len, sr);
+    var d = buf.getChannelData(0);
+    var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for (var i=0; i<len; i++) {
+      var w = Math.random()*2-1;
+      b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759;
+      b2=0.96900*b2+w*0.1538520; b3=0.86650*b3+w*0.3104856;
+      b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
+      d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11; b6=w*0.115926;
     }
     return buf;
   }
 
-  // Crea una capa de ruido filtrada entre freq1 y freq2
-  function noiseLayer(ctx, dest, freq1, freq2, gain) {
+  // Capa continua de ruido filtrado (base de la fogata)
+  function addLayer(ctx, dest, lo, hi, gain) {
     var src = ctx.createBufferSource();
-    src.buffer = makePinkNoise(ctx, 5);
-    src.loop = true;
-
-    var hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=freq1; hp.Q.value=0.5;
-    var lp = ctx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=freq2; lp.Q.value=0.6;
+    src.buffer = pinkBuf(ctx, 6); src.loop = true;
+    var hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=lo; hp.Q.value=0.4;
+    var lp = ctx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=hi; lp.Q.value=0.5;
     var g  = ctx.createGain(); g.gain.value = gain;
-
     src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(dest);
-    src.start();
-    noiseSources.push(src);
-    return src;
+    src.start(); noiseSrcs.push(src);
   }
 
-  // Pop de madera: un chasquido orgánico aleatorio muy suave
-  function woodPop(ctx, dest) {
-    if (!soundOn) return;
+  // UN chasquido de madera: ruido corto con decaimiento exponencial + filtro de madera
+  function woodCrack(ctx, dest) {
     try {
-      var g = ctx.createGain();
-      g.connect(dest);
-      // Cuerpo del pop: ruido muy corto
-      var bufPop = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.04), ctx.sampleRate);
-      var dp = bufPop.getChannelData(0);
-      for (var i=0; i<dp.length; i++) dp[i] = (Math.random()*2-1) * Math.exp(-i/(ctx.sampleRate*0.012));
-      var popSrc = ctx.createBufferSource(); popSrc.buffer = bufPop;
-      var lpPop = ctx.createBiquadFilter(); lpPop.type='lowpass'; lpPop.frequency.value = 280;
-      popSrc.connect(lpPop); lpPop.connect(g);
-      // Ganancia casi invisible
-      var vol = 0.04 + Math.random() * 0.04;
-      g.gain.setValueAtTime(vol, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.06);
-      popSrc.start();
-    } catch(e) {}
-    // Próximo pop: cada 3-9 segundos, completamente al azar → nunca se siente repetido
-    popTimeout = setTimeout(function(){ woodPop(ctx, dest); }, 3000 + Math.random()*6000);
-  }
+      var dur   = 0.018 + Math.random()*0.055;          // 18–73 ms
+      var fq    = 180  + Math.random()*520;              // 180–700 Hz (resonancia de madera)
+      var sz    = Math.floor(ctx.sampleRate * dur);
+      var buf   = ctx.createBuffer(1, sz, ctx.sampleRate);
+      var d     = buf.getChannelData(0);
+      var tau   = ctx.sampleRate * dur * 0.28;           // constante de decaimiento
+      for (var i=0; i<sz; i++)
+        d[i] = (Math.random()*2-1) * Math.exp(-i/tau);
 
-  function startFire() {
-    var ctx = getCtx();
-
-    // Master gain: muy bajo — fogata lejana
-    masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0, ctx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 4); // 4s fade in suave
-    masterGain.connect(ctx.destination);
-
-    // LFO respiración lenta (0.07 Hz = un ciclo cada ~14s) → fuego que "respira"
-    lfoOsc = ctx.createOscillator();
-    var lfoG = ctx.createGain();
-    lfoOsc.frequency.value = 0.07;
-    lfoG.gain.value = 0.018; // modula apenas ±1.8% el volumen
-    lfoOsc.connect(lfoG);
-    lfoG.connect(masterGain.gain);
-    lfoOsc.start();
-
-    // Capas de frecuencia — como anillos de una fogata real:
-    noiseLayer(ctx, masterGain, 30,  100, 1.4);  // rumble profundo de brasas
-    noiseLayer(ctx, masterGain, 100, 350, 1.0);  // cuerpo principal del fuego
-    noiseLayer(ctx, masterGain, 350, 900, 0.35); // hiss suave del aire caliente
-
-    // Pops de madera — comienzan después de 4s para no chocar con el fade-in
-    setTimeout(function(){ woodPop(ctx, masterGain); }, 4500);
-  }
-
-  function stopFire() {
-    clearTimeout(popTimeout);
-    if (masterGain && audioCtx) {
-      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-      masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.2);
-    }
-    setTimeout(function() {
-      noiseSources.forEach(function(s){ try{ s.stop(); }catch(e){} });
-      noiseSources = [];
-      if (lfoOsc) { try{ lfoOsc.stop(); }catch(e){} lfoOsc = null; }
-    }, 1400);
-  }
-
-  // Clic — golpe seco de madera, ni electrónico ni intenso
-  function playClick() {
-    try {
-      var ctx = getCtx();
-      var buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*0.06), ctx.sampleRate);
-      var d = buf.getChannelData(0);
-      for (var i=0; i<d.length; i++) d[i] = (Math.random()*2-1)*Math.exp(-i/(ctx.sampleRate*0.018));
       var src = ctx.createBufferSource(); src.buffer = buf;
-      var lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=320;
-      var g = ctx.createGain(); g.gain.value = 0.22;
-      src.connect(lp); lp.connect(g); g.connect(ctx.destination);
+      var bp  = ctx.createBiquadFilter();
+      bp.type='bandpass'; bp.frequency.value=fq; bp.Q.value=2+Math.random()*2;
+      var g   = ctx.createGain();
+      g.gain.value = 0.038 + Math.random()*0.052;       // sutil: 0.04–0.09
+
+      src.connect(bp); bp.connect(g); g.connect(dest);
       src.start();
     } catch(e) {}
   }
 
-  // Hover — casi nada, una chispa imperceptible
-  function playHover() {
+  // CLUSTER de chasquidos: 1–3 cracks agrupados, luego silencio
+  function crackCluster(ctx, dest) {
+    if (!soundOn) return;
+    var n = 1 + Math.floor(Math.random()*2.8);           // 1–3 cracks
+    for (var i=0; i<n; i++)
+      setTimeout(function(){ if(soundOn) woodCrack(ctx,dest); },
+        i*(20 + Math.random()*60));                      // separados 20–80ms
+
+    // Siguiente cluster: 1.2–5.5 s después → sensación orgánica, nunca periódica
+    crackTimer = setTimeout(function(){ crackCluster(ctx,dest); },
+      1200 + Math.random()*4300);
+  }
+
+  // CRUJIDO de madera: tono grave que sube y baja lentamente (madera en tensión)
+  function woodCreak(ctx, dest) {
+    if (!soundOn) return;
+    try {
+      var osc = ctx.createOscillator();
+      var g   = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(90+Math.random()*60, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(140+Math.random()*80, ctx.currentTime+0.6);
+      osc.frequency.linearRampToValueAtTime(80+Math.random()*40,  ctx.currentTime+1.1);
+      g.gain.setValueAtTime(0, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.018, ctx.currentTime+0.15);
+      g.gain.linearRampToValueAtTime(0, ctx.currentTime+1.1);
+      var lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=300;
+      osc.connect(lp); lp.connect(g); g.connect(dest);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime+1.2);
+    } catch(e) {}
+    // Siguiente crujido: 8–20 s (poco frecuente, dramático cuando aparece)
+    setTimeout(function(){ woodCreak(ctx,dest); }, 8000+Math.random()*12000);
+  }
+
+  function startFire() {
+    var ctx = getCtx();
+    masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.048, ctx.currentTime+5); // fade-in 5s muy suave
+    masterGain.connect(ctx.destination);
+
+    // LFO respiración lenta: la fogata "sube y baja" naturalmente
+    lfoNode = ctx.createOscillator();
+    var lfoG = ctx.createGain(); lfoG.gain.value = 0.014;
+    lfoNode.frequency.value = 0.06; // ciclo cada ~17s
+    lfoNode.connect(lfoG); lfoG.connect(masterGain.gain);
+    lfoNode.start();
+
+    // Capas base de la fogata
+    addLayer(ctx, masterGain, 28,  95,  1.3);  // brasas profundas
+    addLayer(ctx, masterGain, 95,  320, 0.9);  // cuerpo del fuego
+    addLayer(ctx, masterGain, 320, 750, 0.25); // aire caliente — muy tenue
+
+    // Chasquidos: empiezan a los 4s (después del fade-in)
+    setTimeout(function(){ crackCluster(ctx, masterGain); }, 4000);
+    // Primer crujido: a los 7s
+    setTimeout(function(){ woodCreak(ctx, masterGain); }, 7000);
+  }
+
+  function stopFire() {
+    clearTimeout(crackTimer);
+    if (masterGain && audioCtx) {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime+1.5);
+    }
+    setTimeout(function(){
+      noiseSrcs.forEach(function(s){ try{s.stop();}catch(e){} });
+      noiseSrcs = [];
+      if (lfoNode){ try{lfoNode.stop();}catch(e){} lfoNode=null; }
+    }, 1800);
+  }
+
+  // Clic — madera seca, golpe corto y grave
+  function playClick() {
     try {
       var ctx = getCtx();
-      var osc = ctx.createOscillator();
-      var g = ctx.createGain();
-      osc.type = 'triangle'; osc.frequency.value = 1800 + Math.random()*400;
-      g.gain.setValueAtTime(0.022, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
+      var sz  = Math.floor(ctx.sampleRate*0.055);
+      var buf = ctx.createBuffer(1,sz,ctx.sampleRate);
+      var d   = buf.getChannelData(0);
+      for (var i=0;i<sz;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(ctx.sampleRate*0.016));
+      var src=ctx.createBufferSource(); src.buffer=buf;
+      var bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=260; bp.Q.value=1.8;
+      var g=ctx.createGain(); g.gain.value=0.28;
+      src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start();
+    } catch(e){}
+  }
+
+  // Hover — chispa mínima, casi inaudible
+  function playHover() {
+    try {
+      var ctx=getCtx(), osc=ctx.createOscillator(), g=ctx.createGain();
+      osc.type='triangle'; osc.frequency.value=1600+Math.random()*500;
+      g.gain.setValueAtTime(0.018,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.038);
       osc.connect(g); g.connect(ctx.destination);
-      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.045);
-    } catch(e) {}
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.04);
+    } catch(e){}
   }
 
   // ── Toggle mute ───────────────────────────────────────────────────
