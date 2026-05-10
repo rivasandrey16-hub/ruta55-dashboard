@@ -301,6 +301,124 @@ const html = `<!DOCTYPE html>
     .sound-toggle:hover { transform: scale(1.12); border-color: rgba(201,34,42,0.7); }
     .sound-toggle.muted { border-color: rgba(255,255,255,0.1); opacity: 0.6; }
 
+    /* ── CARRITO ── */
+    .cart-fab {
+      position: fixed; bottom: 92px; left: 22px; z-index: 999;
+      width: 54px; height: 54px; border-radius: 50%;
+      background: var(--accent); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; box-shadow: 0 4px 20px rgba(201,34,42,0.45);
+      transition: all 0.3s;
+    }
+    .cart-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(201,34,42,0.65); }
+    .cart-badge {
+      position: absolute; top: -5px; right: -5px;
+      background: #fff; color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem; font-weight: 700;
+      width: 20px; height: 20px; border-radius: 50%;
+      display: none; align-items: center; justify-content: center;
+    }
+    .cart-badge.show { display: flex; }
+
+    .cart-overlay {
+      position: fixed; inset: 0; z-index: 3100;
+      background: rgba(5,3,2,0.7); backdrop-filter: blur(6px);
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .cart-overlay.open { opacity: 1; pointer-events: all; }
+
+    .cart-panel {
+      position: fixed; right: 0; top: 0; bottom: 0; z-index: 3200;
+      width: min(100%, 400px); background: #110e0c;
+      border-left: 1px solid rgba(201,34,42,0.18);
+      display: flex; flex-direction: column;
+      transform: translateX(110%);
+      transition: transform 0.42s cubic-bezier(0.32,0.72,0,1);
+    }
+    .cart-overlay.open .cart-panel { transform: translateX(0); }
+
+    .cart-head {
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .cart-head-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem; font-weight: 900; letter-spacing: 1px;
+    }
+    .cart-head-close {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      color: #fff; font-size: 0.85rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .cart-head-close:hover { background: rgba(201,34,42,0.4); }
+
+    .cart-items {
+      flex: 1; overflow-y: auto; padding: 16px 22px;
+      scrollbar-width: thin; scrollbar-color: rgba(201,34,42,0.3) transparent;
+    }
+    .cart-empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; gap: 12px;
+      color: var(--text-muted);
+    }
+    .cart-empty-icon { font-size: 3rem; opacity: 0.4; }
+    .cart-empty-txt  { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; }
+
+    .cart-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .cart-item-emoji { font-size: 1.6rem; flex-shrink: 0; }
+    .cart-item-info { flex: 1; min-width: 0; }
+    .cart-item-name {
+      font-family: 'Playfair Display', serif; font-size: 0.9rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cart-item-price { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--accent); letter-spacing: 1px; margin-top: 2px; }
+    .cart-item-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .cart-qty-btn {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+      color: #fff; font-size: 1rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; line-height: 1;
+      transition: all 0.2s;
+    }
+    .cart-qty-btn:hover { background: rgba(201,34,42,0.4); border-color: transparent; }
+    .cart-qty-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+      font-weight: 700; min-width: 18px; text-align: center;
+    }
+
+    .cart-footer {
+      padding: 16px 22px 28px; border-top: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
+    }
+    .cart-summary {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .cart-summary-label { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+    .cart-summary-count { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 900; color: var(--accent); }
+    .cart-wa-btn {
+      width: 100%; padding: 16px; border: none; border-radius: 50px;
+      background: var(--whatsapp); color: #fff; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 1rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      box-shadow: 0 4px 20px rgba(37,211,102,0.35); transition: all 0.3s;
+    }
+    .cart-wa-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(37,211,102,0.5); }
+    .cart-wa-btn svg { width: 22px; height: 22px; }
+    .cart-clear {
+      margin-top: 10px; width: 100%; background: none; border: none;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      color: var(--text-muted); letter-spacing: 2px; cursor: pointer;
+      text-transform: uppercase; padding: 6px; transition: color 0.2s;
+    }
+    .cart-clear:hover { color: var(--accent); }
+
     /* ── MODAL MENÚ ── */
     .modal-overlay {
       position: fixed; inset: 0; z-index: 3000;
@@ -618,6 +736,35 @@ const html = `<!DOCTYPE html>
 </footer>
 
 <a href="${WA_LINK}" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp">${WA_SVG}</a>
+
+<!-- Carrito flotante -->
+<button class="cart-fab" id="cart-fab" onclick="openCart()" aria-label="Ver carrito">
+  🛒<span class="cart-badge" id="cart-badge">0</span>
+</button>
+
+<!-- Panel carrito -->
+<div class="cart-overlay" id="cart-overlay" onclick="handleCartOverlay(event)">
+  <div class="cart-panel" id="cart-panel">
+    <div class="cart-head">
+      <span class="cart-head-title">🛒 Tu Pedido</span>
+      <button class="cart-head-close" onclick="closeCart()">✕</button>
+    </div>
+    <div class="cart-items" id="cart-items">
+      <div class="cart-empty">
+        <div class="cart-empty-icon">🍽️</div>
+        <div class="cart-empty-txt">Tu carrito está vacío</div>
+      </div>
+    </div>
+    <div class="cart-footer" id="cart-footer" style="display:none">
+      <div class="cart-summary">
+        <span class="cart-summary-label">Total items</span>
+        <span class="cart-summary-count" id="cart-count-label">0</span>
+      </div>
+      <button class="cart-wa-btn" onclick="sendOrder()">${WA_SVG} Enviar pedido por WhatsApp</button>
+      <button class="cart-clear" onclick="clearCart()">× Vaciar carrito</button>
+    </div>
+  </div>
+</div>
 
 <!-- Botón mute flotante -->
 <button class="sound-toggle" id="sound-toggle" aria-label="Sonido" title="Activar/Desactivar sonido">
@@ -1001,13 +1148,107 @@ const html = `<!DOCTYPE html>
     });
   });
 
-  // Placeholder carrito (Paso 3)
+  // ── CARRITO ───────────────────────────────────────────────────────
+  var cart = {}; // { id: { item, qty } }
+
+  function cartTotal() {
+    return Object.values(cart).reduce(function(s,e){ return s + e.qty; }, 0);
+  }
+
+  function updateBadge() {
+    var n = cartTotal();
+    var badge = document.getElementById('cart-badge');
+    badge.textContent = n;
+    badge.classList.toggle('show', n > 0);
+    document.getElementById('cart-footer').style.display = n > 0 ? '' : 'none';
+    document.getElementById('cart-count-label').textContent = n + (n===1?' item':' items');
+  }
+
+  function renderCart() {
+    var el = document.getElementById('cart-items');
+    var keys = Object.keys(cart);
+    if (!keys.length) {
+      el.innerHTML = '<div class="cart-empty"><div class="cart-empty-icon">🍽️</div><div class="cart-empty-txt">Tu carrito está vacío</div></div>';
+      updateBadge(); return;
+    }
+    el.innerHTML = keys.map(function(id) {
+      var e = cart[id];
+      var emoji = e.item.emoji || '🍽️';
+      return '<div class="cart-item">' +
+        '<div class="cart-item-emoji">' + emoji + '</div>' +
+        '<div class="cart-item-info">' +
+          '<div class="cart-item-name">' + e.item.name + '</div>' +
+          '<div class="cart-item-price">' + e.item.price + '</div>' +
+        '</div>' +
+        '<div class="cart-item-controls">' +
+          '<button class="cart-qty-btn" onclick="changeQty(' + id + ',-1)">−</button>' +
+          '<span class="cart-qty-num">' + e.qty + '</span>' +
+          '<button class="cart-qty-btn" onclick="changeQty(' + id + ',1)">+</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    updateBadge();
+  }
+
   function addToCart() {
+    if (!currentItem) return;
+    var id = currentItem.id;
+    if (cart[id]) cart[id].qty++;
+    else cart[id] = { item: currentItem, qty: 1 };
+    renderCart();
+    // Feedback en el botón
     var btn = document.getElementById('modal-btn-cart');
-    btn.textContent = '✓ Agregado';
+    btn.textContent = '✓ En tu carrito (' + cart[id].qty + ')';
     btn.classList.add('added');
     if (soundOn) playClick();
-    // TODO Paso 3: lógica real del carrito
+  }
+
+  function changeQty(id, delta) {
+    if (!cart[id]) return;
+    cart[id].qty += delta;
+    if (cart[id].qty <= 0) delete cart[id];
+    renderCart();
+    if (soundOn) playClick();
+  }
+
+  function clearCart() {
+    cart = {};
+    renderCart();
+    if (soundOn) playClick();
+  }
+
+  function openCart() {
+    document.getElementById('cart-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    renderCart();
+    if (soundOn) playClick();
+  }
+
+  function closeCart() {
+    document.getElementById('cart-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function handleCartOverlay(e) {
+    if (e.target === document.getElementById('cart-overlay')) closeCart();
+  }
+
+  function sendOrder() {
+    var keys = Object.keys(cart);
+    if (!keys.length) return;
+    var lines = keys.map(function(id) {
+      var e = cart[id];
+      return '  • ' + e.qty + 'x ' + e.item.name +
+        (e.item.price !== '$ ----' ? ' — ' + e.item.price : '');
+    });
+    var msg =
+      '🔥 *PEDIDO - CHORIZOS RUTA 55*\n\n' +
+      '📋 *Mi pedido:*\n' + lines.join('\n') + '\n\n' +
+      '📍 Llano Grande, Chitagá\n' +
+      '⏰ Sábados y Domingos\n\n' +
+      '¡Muchas gracias! 🙌';
+    window.open('https://wa.me/573133259805?text=' + encodeURIComponent(msg), '_blank');
+    if (soundOn) playClick();
   }
 </script>
 </body>
